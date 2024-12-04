@@ -1,25 +1,39 @@
-window.function = function(index, input2, input3, input4) {
-  // Ensure inputs are valid strings
-  if (!index || !input2 || !input3 || !input4) {
-    throw new Error("All inputs are required and must be strings.");
+window.function = async function(date, workDays, country) {
+  const inputDate = new Date(date.value);
+  const workDaysString = workDays.value;
+  const countryCode = country.value;
+
+  if (!inputDate || !workDaysString || !countryCode) {
+    throw new Error("Invalid inputs. Ensure you provide a valid date, a string of workdays, and a country code.");
   }
 
-  // Parse inputs
-  const idx = parseInt(index.value.trim(), 10);
-  if (isNaN(idx) || idx < 0) {
-    throw new Error("Index must be a valid non-negative integer.");
+  // Parse workdays string into an array
+  const workDaysArray = workDaysString.split(',').map(day => day.trim());
+
+  const holidaysApiUrl = `https://date.nager.at/Api/v2/PublicHolidays/${inputDate.getFullYear()}/${countryCode}`;
+
+  // Fetch national holidays for the given country
+  const holidaysResponse = await fetch(holidaysApiUrl);
+  if (!holidaysResponse.ok) {
+    throw new Error(`Failed to fetch holidays for ${countryCode}`);
   }
+  const holidays = await holidaysResponse.json();
+  const holidayDates = holidays.map(holiday => new Date(holiday.date).toISOString().split('T')[0]);
 
-  const idsArray = [
-    ...input2.value.split(",").map(id => id.trim()),
-    ...input3.value.split(",").map(id => id.trim()),
-    ...input4.value.split(",").map(id => id.trim())
-  ];
+  let nextDate = new Date(inputDate);
+  nextDate.setDate(nextDate.getDate() + 1);
 
-  if (idx >= idsArray.length) {
-    throw new Error("Index is out of range for the cumulative array.");
+  while (true) {
+    const dayOfWeek = nextDate.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateString = nextDate.toISOString().split('T')[0];
+
+    if (
+      workDaysArray.includes(dayOfWeek) &&
+      !holidayDates.includes(dateString)
+    ) {
+      return dateString; // Return the date as a string (e.g., "2024-12-09")
+    }
+
+    nextDate.setDate(nextDate.getDate() + 1);
   }
-
-  // Extract the ID at the given index
-  return idsArray[idx];
 };
